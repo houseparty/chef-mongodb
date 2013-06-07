@@ -25,6 +25,10 @@
 case node['platform_family']
 when "debian"
   # Adds the repo: http://www.mongodb.org/display/DOCS/Ubuntu+and+Debian+packages
+  execute "apt-get update" do
+    action :nothing
+  end
+
   apt_repository "10gen" do
     uri "http://downloads-distro.mongodb.org/repo/#{node[:mongodb][:apt_repo]}"
     distribution "dist"
@@ -32,9 +36,11 @@ when "debian"
     keyserver "hkp://keyserver.ubuntu.com:80"
     key "7F0CEB10"
     action :add
+    notifies :run, "execute[apt-get update]", :immediately
   end
 
 when "rhel","fedora"
+  include_recipe "yum"
   yum_repository "10gen" do
     description "10gen RPM Repository"
     url "http://downloads-distro.mongodb.org/repo/redhat/os/#{node['kernel']['machine']  =~ /x86_64/ ? 'x86_64' : 'i686'}"
@@ -42,5 +48,5 @@ when "rhel","fedora"
   end
 
 else
-    Chef::Log.warn("Adding the #{node['platform_family']} 10gen repository is not yet not supported by this cookbook")
+    Chef::Log.warn("Adding the #{node['platform']} 10gen repository is not yet not supported by this cookbook")
 end

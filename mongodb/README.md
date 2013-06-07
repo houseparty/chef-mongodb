@@ -2,21 +2,20 @@
 
 Installs and configures MongoDB, supporting:
 
-* Single MongoDB -- Currently tested and working with amazon linux
-* Replication -- Incomplete for amazon linux -- minor code changes to work with chef 9
-* Sharding -- Incomplete for amazon linux -- minor code changes to work with chef 9
-* Replication and Sharding -- Incomplete for amazon linux -- minor code changes to work with chef 9
-* 10gen repository package installation -- Currently tested and working with amazon linux
+* Single MongoDB
+* Replication
+* Sharding
+* Replication and Sharding
+* 10gen repository package installation
 
 # REQUIREMENTS:
 
 ## Platform:
 
-The cookbook aims to be platform independant, but is best tested on amazon linux systems.
+The cookbook aims to be platform independant, but is best tested on debian squeeze systems.
 
-The `10gen_repo` recipe configures the package manager to use 10gen's
-official package reposotories on Debian, Ubuntu, Redhat, CentOS, Fedora, and
-Amazon linux distributions.
+The `10gen_repo` recipe currently supports only the Debian and Ubuntu and Fedora and CentOS 10gen repository.
+Patches for other platforms are welcome.
 
 # DEFINITIONS:
 
@@ -28,8 +27,9 @@ For examples see the USAGE section below.
 
 # ATTRIBUTES:
 
-* `mongodb[:dbpath]` - Location for mongodb data directory, defaults to "/var/lib/mongodb"
-* `mongodb[:logpath]` - Path for the logfiles, default is "/var/log/mongodb"
+* `mongodb[:dbpath]` - Location for mongodb data directory, defaults to "/data"
+* `mongodb[:logpath]` - Path for the logfiles, default is "/log"
+* `mongodb[:journalpath]` - Path for the journal files, default is "/journal"
 * `mongodb[:port]` - Port the mongod listens on, default is 27017
 * `mongodb[:client_role]` - Role identifing all external clients which should have access to a mongod instance
 * `mongodb[:cluster_name]` - Name of the cluster, all members of the cluster must
@@ -37,7 +37,6 @@ For examples see the USAGE section below.
     members of a cluster.
 * `mongodb[:shard_name]` - Name of a shard, default is "default"
 * `mongodb[:sharded_collections]` - Define which collections are sharded
-* `mongodb[:replicaset_name]` - Define name of replicatset
 
 # USAGE:
 
@@ -46,27 +45,15 @@ For examples see the USAGE section below.
 Adds the stable [10gen repo](http://www.mongodb.org/downloads#packages) for the
 corresponding platform. Currently only implemented for the Debian and Ubuntu repository.
 
-## Single Mongo DB Instance
-OpsWorks includes a UI for the layer. Be sure to add data, log, and journal volumes:
-/data, /log, and /journal
-You can also configure these paths with a custom JSON. At the time of testing this script,
-Amazon Linux, Raid 10, unmounts the drives after a reboot. Someone posted a comment about it in a blog, 
-and I somehow stumbled upon it as I was working on other issues. I created a gist with details from the blog,
-and if you scroll down to my comment in the following GIST, you'll see the details:
-https://gist.github.com/Cyclic/5610805
+Usage: just add `recipe[mongodb::10gen_repo]` to the node run_list *before* any other
+MongoDB recipe, and the mongodb-10gen **stable** packages will be installed instead of the distribution default.
 
-For OpsWorks, running Amazon Linux, add these recipes, in this order, to the custom section of your layer:
+## Single mongodb instance
+
+Simply add
+
 ```ruby
-yum::default
-# Mongodb-10gen **stable** packages will be installed instead of the distribution default
-mongodb::10gen_repo
-mongodb::default
-# This next line is the repo removal recipe. There is a better way to do this
-# by removing the repo after the mongo install, but this makes it optional, I guess.
-# It's required that you remove the 10gen repo to prevent yum from trying to use
-# the 10gen repo for the linux installation and updates. If there were a priority settings
-# in chef, then this would be unnecessary, since we could use priority when adding 10gen.
-mongodb::10gen_remrepo
+include_recipe "mongodb::default"
 ```
   
 to your recipe. This will run the mongodb instance as configured by your distribution.
@@ -123,7 +110,7 @@ mongos are actually doing the configuration of the whole sharded cluster.
 Most importantly you need to define what collections should be sharded by setting the
 attribute `mongodb[:sharded_collections]`:
 
-```ruby
+```javascript
 {
   "mongodb": {
     "sharded_collections": {
@@ -148,7 +135,7 @@ The setup is not much different to the one described above. All you have to do i
 `mongodb::replicaset` recipe to all shard nodes, and make sure that all shard
 nodes which should be in the same replicaset have the same shard name.
 
-For more details, you can find a [tutorial for Sharding + Replication](https://github.com/edelight/chef-cookbooks/wiki/MongoDB%3A-Replication%2BSharding) in the wiki.
+For more details, you can find a [tutorial for Sharding + Replication](https://github.com/edelight/cookbooks/wiki/MongoDB%3A-Replication%2BSharding) in the wiki.
 
 # LICENSE and AUTHOR:
 

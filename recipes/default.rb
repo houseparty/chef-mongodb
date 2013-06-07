@@ -21,7 +21,6 @@
 
 package node[:mongodb][:package_name] do
   action :install
-  version node[:mongodb][:package_version]
 end
 
 needs_mongo_gem = (node.recipe?("mongodb::replicaset") or node.recipe?("mongodb::mongos"))
@@ -40,6 +39,7 @@ if node.recipe?("mongodb::default") or node.recipe?("mongodb")
     mongodb_type "mongod"
     bind_ip      node['mongodb']['bind_ip']
     port         node['mongodb']['port']
+    journalpath  node['mongodb']['journalpath']
     logpath      node['mongodb']['logpath']
     dbpath       node['mongodb']['dbpath']
     enable_rest  node['mongodb']['enable_rest']

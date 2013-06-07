@@ -20,9 +20,9 @@
 #
 
 define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :start],
-    :bind_ip => nil, :port => 27017 , :logpath => "/var/log/mongodb",
-    :dbpath => "/data", :configserver => [],
-    :replicaset => nil, :enable_rest => false, :notifies => [] do
+    :bind_ip => nil, :port => 27017 , :logpath => "/log", :journalpath => "/data/journal",
+    :dbpath => "/data", :configfile => "/etc/mongod.conf", :configserver => [],
+    :replicaset => nil, :enable_rest => true, :notifies => [] do
     
   include_recipe "mongodb::default"
   
@@ -39,13 +39,12 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
   
   dbpath = params[:dbpath]
   
-  configfile = node['mongodb']['configfile']
+  journalpath = params[:journalpath]
+        
+  configfile = params[:configfile]
   configserver_nodes = params[:configserver]
   
   replicaset = params[:replicaset]
-
-  nojournal = node['mongodb']['nojournal']
-
   if type == "shard"
     if replicaset.nil?
       replicaset_name = nil
@@ -77,16 +76,35 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
   if type != "mongos"
     daemon = "/usr/bin/mongod"
     configserver = nil
+    configfile = nil
   else
     daemon = "/usr/bin/mongos"
+    configfile = nil
     dbpath = nil
     configserver = configserver_nodes.collect{|n| "#{n['fqdn']}:#{n['mongodb']['port']}" }.join(",")
+  end
+  
+  # journal link [make sure it exists]
+  execute "" do
+    command "sudo ln -s #{journalpath} #{dbpath}/journal"
+    action :nothing
+  end
+  
+  # chown the mongo directories/volumes per 10gen instructions
+  execute "" do
+    command "chown mongod:mongod #{journalpath} #{dbpath} #{logpath}"
+    action :nothing
+  end
+  
+  # service
+  service name do
+    supports :status => true, :restart => true
+    action :nothing
   end
   
   # default file
   template "#{node['mongodb']['defaults_dir']}/#{name}" do
     action :create
-    cookbook node['mongodb']['template_cookbook']
     source "mongodb.default.erb"
     group node['mongodb']['root_group']
     owner "root"
@@ -100,13 +118,38 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
       "port" => port,
       "logpath" => logfile,
       "dbpath" => dbpath,
+      "journalpath" => journalpath,
       "replicaset_name" => replicaset_name,
       "configsrv" => false, #type == "configserver", this might change the port
       "shardsrv" => false,  #type == "shard", dito.
-      "nojournal" => nojournal,
       "enable_rest" => params[:enable_rest]
     )
-    notifies :restart, "service[#{name}]"
+    notifies :restart, resources(:service => name)
+  end
+  
+  # config file
+  template "/etc/mongod.conf" do
+    action :create
+    source "mongodb.amazon.erb"
+    group node['mongodb']['root_group']
+    owner "root"
+    mode "0644"
+    variables(
+      "daemon_path" => daemon,
+      "name" => name,
+      "config" => configfile,
+      "configdb" => configserver,
+      "bind_ip" => bind_ip,
+      "port" => port,
+      "logpath" => logfile,
+      "dbpath" => dbpath,
+      "journalpath" => journalpath,
+      "replicaset_name" => replicaset_name,
+      "configsrv" => false, #type == "configserver", this might change the port
+      "shardsrv" => false,  #type == "shard", dito.
+      "enable_rest" => params[:enable_rest]
+    )
+    notifies :restart, resources(:service => name)
   end
   
   # log dir [make sure it exists]
@@ -117,7 +160,7 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
     action :create
     recursive true
   end
-  
+      
   if type != "mongos"
     # dbpath dir [make sure it exists]
     directory dbpath do
@@ -132,18 +175,16 @@ define :mongodb_instance, :mongodb_type => "mongod" , :action => [:enable, :star
   # init script
   template "#{node['mongodb']['init_dir']}/#{name}" do
     action :create
-    cookbook node['mongodb']['template_cookbook']
     source node[:mongodb][:init_script_template]
     group node['mongodb']['root_group']
     owner "root"
     mode "0755"
     variables :provides => name
-    notifies :restart, "service[#{name}]"
+    notifies :restart, resources(:service => name)
   end
-  
+   
   # service
   service name do
-    supports :status => true, :restart => true
     action service_action
     service_notifies.each do |service_notify|
       notifies :run, service_notify

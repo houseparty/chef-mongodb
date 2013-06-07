@@ -12,7 +12,7 @@ recipe "mongodb::configserver", "Installs and configures a configserver for mong
 recipe "mongodb::shard", "Installs and configures a single shard"
 recipe "mongodb::replicaset", "Installs and configures a mongodb replicaset"
 
-depends "apt", "~> 1.4.4"
+depends "apt"
 depends "yum"
 
 %w{ ubuntu debian freebsd centos redhat fedora amazon scientific}.each do |os|
@@ -22,12 +22,17 @@ end
 attribute "mongodb/dbpath",
   :display_name => "dbpath",
   :description => "Path to store the mongodb data",
-  :default => "/var/lib/mongodb"
+  :default => "/data"
 
 attribute "mongodb/logpath",
   :display_name => "logpath",
   :description => "Path to store the logfiles of a mongodb instance",
-  :default => "/var/log/mongodb"
+  :default => "/log"
+
+attribute "mongodb/journalpath",
+  :display_name => "journalpath",
+  :description => "Path to store the journal files of a mongodb instance",
+  :default => "/journal"
 
 attribute "mongodb/port",
   :display_name => "Port",
@@ -37,7 +42,6 @@ attribute "mongodb/port",
 attribute "mongodb/client_roles",
   :display_name => "Client Roles",
   :description => "Roles of nodes who need access to the mongodb instance",
-  :type => "array",
   :default => []
 
 attribute "mongodb/cluster_name",
@@ -53,8 +57,7 @@ attribute "mongodb/shard_name",
 attribute "mongodb/sharded_collections",
   :display_name => "Sharded Collections",
   :description => "collections to shard",
-  :type => "array",
-  :default => []
+  :default => {}
 
 attribute "mongodb/replicaset_name",
   :display_name => "Replicaset_name",
@@ -69,18 +72,3 @@ attribute "mongodb/bind_ip",
   :display_name => "Bind address",
   :description => "MongoDB instance bind address",
   :default => nil
-
-attribute "mongodb/package_version",
-  :display_name => "MongoDB package version",
-  :description => "Version of the MongoDB package to install",
-  :default => nil
-
-attribute "mongodb/configfile",
-  :display_name => "Configuration File",
-  :description => "Name of configuration file to use with when starting mongod/mongos vs command line options",
-  :default => nil
-
-attribute "mongodb/nojournal",
-  :display_name => "Disable Journals",
-  :description => "Journals are enabled by default on 64bit after mongo 2.0, this can disable it",
-  :default => "false"

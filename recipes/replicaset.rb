@@ -25,6 +25,7 @@ if !node.recipe?("mongodb::shard")
     mongodb_type "mongod"
     port         node['mongodb']['port']
     logpath      node['mongodb']['logpath']
+    journalpath  node['mongodb']['journalpath']
     dbpath       node['mongodb']['dbpath']
     replicaset   node
     enable_rest  node['mongodb']['enable_rest']

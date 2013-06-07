@@ -34,5 +34,6 @@ mongodb_instance "configserver" do
   port         node['mongodb']['port']
   logpath      node['mongodb']['logpath']
   dbpath       node['mongodb']['dbpath']
+  journalpath  node['mongodb']['journalpath']
   enable_rest  node['mongodb']['enable_rest']
 end
